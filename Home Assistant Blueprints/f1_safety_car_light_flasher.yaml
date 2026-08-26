@@ -1,0 +1,126 @@
+blueprint:
+  name: F1 Safety Car / VSC Light Flasher
+  description: >
+    Flashes a light whenever an F1 session goes live and again whenever the
+    track status switches to Virtual Safety Car (VSC). Uses a faster flash
+    for a full Safety Car period than for VSC, so you can tell the two apart
+    from across the room. Requires an F1 integration that exposes a session
+    "on/off" binary sensor and a track status sensor (e.g. the F1 custom
+    integration commonly used with Home Assistant).
+  domain: automation
+  source_url: https://github.com/
+  input:
+    f1_session_sensor:
+      name: F1 Session Sensor
+      description: Binary sensor that turns "on" when an F1 session goes live.
+      selector:
+        entity:
+          domain: binary_sensor
+    f1_track_status_sensor:
+      name: F1 Track Status Sensor
+      description: Sensor whose state reflects the current track status (e.g. VSC, SC, Green).
+      selector:
+        entity:
+          domain: sensor
+    target_light:
+      name: Light to flash
+      description: The light entity that will flash.
+      selector:
+        entity:
+          domain: light
+    flash_color:
+      name: Flash color
+      description: RGB color used for the flash.
+      default: [255, 185, 0]
+      selector:
+        color_rgb: {}
+    sc_flash_interval_ms:
+      name: Safety Car flash speed (ms)
+      description: On/off delay in milliseconds during a full Safety Car period. Lower = faster flash.
+      default: 1850
+      selector:
+        number:
+          min: 200
+          max: 5000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
+    vsc_flash_interval_ms:
+      name: Virtual Safety Car flash speed (ms)
+      description: On/off delay in milliseconds during a Virtual Safety Car period. Lower = faster flash.
+      default: 1500
+      selector:
+        number:
+          min: 200
+          max: 5000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
+
+mode: single
+
+triggers:
+  - trigger: state
+    entity_id: !input f1_session_sensor
+    id: SC
+    from: "off"
+    to: "on"
+  - trigger: state
+    entity_id: !input f1_track_status_sensor
+    id: VSC
+    to: VSC
+
+conditions: []
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - SC
+        sequence:
+          - repeat:
+              while:
+                - condition: state
+                  entity_id: !input f1_session_sensor
+                  state: "on"
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: !input target_light
+                  data:
+                    brightness_pct: 100
+                    rgb_color: !input flash_color
+                - delay:
+                    milliseconds: !input sc_flash_interval_ms
+                - action: light.turn_off
+                  target:
+                    entity_id: !input target_light
+                  data: {}
+                - delay:
+                    milliseconds: !input sc_flash_interval_ms
+      - conditions:
+          - condition: trigger
+            id:
+              - VSC
+        sequence:
+          - repeat:
+              while:
+                - condition: state
+                  entity_id: !input f1_session_sensor
+                  state: "on"
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: !input target_light
+                  data:
+                    brightness_pct: 100
+                    rgb_color: !input flash_color
+                - delay:
+                    milliseconds: !input vsc_flash_interval_ms
+                - action: light.turn_off
+                  target:
+                    entity_id: !input target_light
+                  data: {}
+                - delay:
+                    milliseconds: !input vsc_flash_interval_ms
