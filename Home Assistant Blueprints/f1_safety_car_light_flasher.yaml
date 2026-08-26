@@ -1,13 +1,9 @@
 blueprint:
   name: F1 Safety Car / VSC Light Flasher
   description: >
-    Flashes a light whenever an F1 session goes live and again whenever the
-    track status switches to Virtual Safety Car (VSC). Uses a faster flash
-    for a full Safety Car period than for VSC, so you can tell the two apart
-    from across the room. Requires an F1 integration that exposes a session
-    sensor (e.g. `sensor.f1_session_current_session`) whose state is the
-    session name, and a track status sensor (e.g. the F1 custom integration
-    commonly used with Home Assistant).
+   Flashes a light whenever whenever the track status switches to Virtual Safety Car (VSC). Uses a faster flash
+   for a full Safety Car period than for VSC, so you can tell the two apart
+   from across the room. Requires the F1 Sensor Integration 
   domain: automation
   source_url: https://github.com/
   input:
