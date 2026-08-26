@@ -202,7 +202,8 @@ actions:
           - condition: state
             entity_id: !input f1_track_status_sensor
             state: CLEAR
-          - condition: not:
+          - condition: not
+            conditions:
               - condition: state
                 entity_id: !input f1_current_session_sensor
                 state:
@@ -213,7 +214,8 @@ actions:
                   - "Sprint Qualifying"
                   - "Sprint"
                   - "Race"
-          - condition: not:
+          - condition: not
+            conditions:
               - condition: state
                 entity_id: !input f1_session_status_sensor
                 state: "Live"
