@@ -1,34 +1,48 @@
 blueprint:
-  name: F1 Safety Car / VSC Light Flasher
+  name: F1 Race Status Light Controller
   description: >
     Flashes a light whenever the F1 track status switches to Safety Car (SC)
     or Virtual Safety Car (VSC), stopping as soon as the status changes to
-    anything else. When the status goes Red Flag, the flashing stops and the
-    light turns solid red, staying red until the session ends (the session
-    sensor goes "off") and the track status clears. Once both of those are
-    true, the light turns solid green for a short period as an "all clear /
-    session over" signal, then switches off. Requires an F1 integration
-    that exposes a session sensor (e.g. `binary_sensor.f1_session`) and a
-    track status sensor (e.g. `sensor.f1_session_track_status`) with SC,
-    VSC, RED, and CLEAR among its possible states.
+    anything else. When the status goes to Red Flag, flashing stops and the
+    light turns solid red, staying red until the session has actually ended
+    and the track is clear. Once that's confirmed, the light turns solid
+    green briefly as a "green flag" signal, then switches off. Session end
+    is detected using the current-session sensor and session-status sensor
+    (more reliable than a simple session on/off sensor, since the track can
+    go clear mid-session too). Requires an F1 integration exposing a track
+    status sensor (e.g. `sensor.f1_session_track_status`) with SC, VSC, RED,
+    and CLEAR among its states, a current-session sensor (e.g.
+    `sensor.f1_session_current_session`), and a session-status sensor (e.g.
+    `sensor.f1_session_session_status`) that reads "Live" while a session
+    is in progress.
   domain: automation
   source_url: https://github.com/
   input:
-    f1_session_sensor:
-      name: F1 Session Sensor
-      description: >
-        Binary sensor that is "on" while a session is live, e.g.
-        binary_sensor.f1_session. Used to detect when the session has
-        fully ended.
-      selector:
-        entity:
-          domain: binary_sensor
     f1_track_status_sensor:
       name: F1 Track Status Sensor
       description: >
         Sensor whose state reflects the current track status, e.g.
         sensor.f1_session_track_status. Must include SC, VSC, RED, and
         CLEAR as possible states.
+      selector:
+        entity:
+          domain: sensor
+    f1_current_session_sensor:
+      name: F1 Current Session Sensor
+      description: >
+        Sensor whose state is the name of the currently active session, e.g.
+        sensor.f1_session_current_session. Used to confirm the session has
+        actually finished (state is no longer one of Practice 1, Practice 2,
+        Practice 3, Qualifying, Sprint Qualifying, Sprint, or Race).
+      selector:
+        entity:
+          domain: sensor
+    f1_session_status_sensor:
+      name: F1 Session Status Sensor
+      description: >
+        Sensor that reads "Live" while a session is actively in progress,
+        e.g. sensor.f1_session_session_status. Used together with the
+        current-session sensor to confirm the session has ended.
       selector:
         entity:
           domain: sensor
@@ -50,15 +64,15 @@ blueprint:
       default: [255, 0, 0]
       selector:
         color_rgb: {}
-    green_color:
-      name: Session-over color
-      description: RGB color used for the solid "all clear" light once the session ends.
+    green_flag_color:
+      name: Green flag color
+      description: RGB color used for the solid "green flag" light once the session has ended.
       default: [0, 255, 0]
       selector:
         color_rgb: {}
-    green_duration_seconds:
-      name: Session-over light duration (s)
-      description: How long the "all clear" green light stays on before switching off.
+    green_flag_duration_seconds:
+      name: Green flag light duration (s)
+      description: How long the green flag light stays on before switching off.
       default: 30
       selector:
         number:
@@ -106,13 +120,15 @@ triggers:
     id: RED
     to: RED
   - trigger: state
-    entity_id: !input f1_session_sensor
-    id: SESSION_END
-    to: "off"
-  - trigger: state
     entity_id: !input f1_track_status_sensor
-    id: SESSION_END
+    id: GREEN_FLAG
     to: CLEAR
+  - trigger: state
+    entity_id: !input f1_current_session_sensor
+    id: GREEN_FLAG
+  - trigger: state
+    entity_id: !input f1_session_status_sensor
+    id: GREEN_FLAG
 
 conditions: []
 
@@ -182,22 +198,34 @@ actions:
       - conditions:
           - condition: trigger
             id:
-              - SESSION_END
-          - condition: state
-            entity_id: !input f1_session_sensor
-            state: "off"
+              - GREEN_FLAG
           - condition: state
             entity_id: !input f1_track_status_sensor
             state: CLEAR
+          - condition: not:
+              - condition: state
+                entity_id: !input f1_current_session_sensor
+                state:
+                  - "Practice 1"
+                  - "Practice 2"
+                  - "Practice 3"
+                  - "Qualifying"
+                  - "Sprint Qualifying"
+                  - "Sprint"
+                  - "Race"
+          - condition: not:
+              - condition: state
+                entity_id: !input f1_session_status_sensor
+                state: "Live"
         sequence:
           - action: light.turn_on
             target:
               entity_id: !input target_light
             data:
               brightness_pct: 100
-              rgb_color: !input green_color
+              rgb_color: !input green_flag_color
           - delay:
-              seconds: !input green_duration_seconds
+              seconds: !input green_flag_duration_seconds
           - action: light.turn_off
             target:
               entity_id: !input target_light
