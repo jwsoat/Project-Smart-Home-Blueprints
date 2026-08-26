@@ -5,17 +5,22 @@ blueprint:
     track status switches to Virtual Safety Car (VSC). Uses a faster flash
     for a full Safety Car period than for VSC, so you can tell the two apart
     from across the room. Requires an F1 integration that exposes a session
-    "on/off" binary sensor and a track status sensor (e.g. the F1 custom
-    integration commonly used with Home Assistant).
+    sensor (e.g. `sensor.f1_session_current_session`) whose state is the
+    session name, and a track status sensor (e.g. the F1 custom integration
+    commonly used with Home Assistant).
   domain: automation
   source_url: https://github.com/
   input:
     f1_session_sensor:
       name: F1 Session Sensor
-      description: Binary sensor that turns "on" when an F1 session goes live.
+      description: >
+        Sensor whose state is the current session name, e.g.
+        sensor.f1_session_current_session. A session is considered "live"
+        when its state is one of: Practice 1, Practice 2, Practice 3,
+        Qualifying, Sprint Qualifying, Sprint, Race.
       selector:
         entity:
-          domain: binary_sensor
+          domain: sensor
     f1_track_status_sensor:
       name: F1 Track Status Sensor
       description: Sensor whose state reflects the current track status (e.g. VSC, SC, Green).
@@ -63,8 +68,14 @@ triggers:
   - trigger: state
     entity_id: !input f1_session_sensor
     id: SC
-    from: "off"
-    to: "on"
+    to:
+      - "Practice 1"
+      - "Practice 2"
+      - "Practice 3"
+      - "Qualifying"
+      - "Sprint Qualifying"
+      - "Sprint"
+      - "Race"
   - trigger: state
     entity_id: !input f1_track_status_sensor
     id: VSC
@@ -83,7 +94,14 @@ actions:
               while:
                 - condition: state
                   entity_id: !input f1_session_sensor
-                  state: "on"
+                  state:
+                    - "Practice 1"
+                    - "Practice 2"
+                    - "Practice 3"
+                    - "Qualifying"
+                    - "Sprint Qualifying"
+                    - "Sprint"
+                    - "Race"
               sequence:
                 - action: light.turn_on
                   target:
@@ -108,7 +126,14 @@ actions:
               while:
                 - condition: state
                   entity_id: !input f1_session_sensor
-                  state: "on"
+                  state:
+                    - "Practice 1"
+                    - "Practice 2"
+                    - "Practice 3"
+                    - "Qualifying"
+                    - "Sprint Qualifying"
+                    - "Sprint"
+                    - "Race"
               sequence:
                 - action: light.turn_on
                   target:
